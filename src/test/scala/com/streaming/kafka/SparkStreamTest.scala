@@ -2,7 +2,7 @@ package com.streaming.kafka
 
 import java.util.{Properties, UUID}
 
-import com.moviebooking.streaming.{Networks, SparkDirectStreaming, SparkStructuredStreaming}
+import com.moviebooking.streaming._
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordMetadata}
 import org.scalatest.concurrent.Eventually
@@ -17,11 +17,11 @@ class SparkStreamTest extends FunSuite with BeforeAndAfterAll with Matchers with
   implicit val embeddedKafkaConfig: EmbeddedKafkaConfig = createKafkaConfig
 
   override def afterAll(): Unit = {
-    EmbeddedKafka.stop()
+//    EmbeddedKafka.stop()
   }
 
   override protected def beforeAll(): Unit = {
-    EmbeddedKafka.start()(embeddedKafkaConfig)
+//    EmbeddedKafka.start()(embeddedKafkaConfig)
   }
 
   def createKafkaConfig: EmbeddedKafkaConfig = {
@@ -40,25 +40,43 @@ class SparkStreamTest extends FunSuite with BeforeAndAfterAll with Matchers with
     val kafkaHost = new Networks().hostname()
     val kafkaPort = 9002
 
-    s"${kafkaHost}:${kafkaPort}"
+    s"$kafkaHost:$kafkaPort"
   }
 
   test("should consume messages from spark") {
     import scala.concurrent.ExecutionContext.Implicits.global
-    Future {
-      produceTestMessagesSync("memberTopic")
-    }
+        EmbeddedKafka.start()(embeddedKafkaConfig)
+    produceTestMessagesSync("memberTopic")
 
-//    SparkDirectStreaming.processStream(bootstrapServers, "memberTopic")
+    //    SparkDirectStreaming.processStream(bootstrapServers, "memberTopic")
     SparkStructuredStreaming.processStream(bootstrapServers, "memberTopic")
+  }
+
+  test("producer messages") {
+    produceTestMessagesSync("memberTopic")
+  }
+
+  test("produce refresh messages") {
+    produceTestMessagesSync1("memberTopic")
   }
 
   private def produceTestMessagesSync(topic: String) = {
 
     val producer = createProducer
 
-    for (i ← 0 to 10000) {
-      val data = new ProducerRecord[String, String](topic, s"key${i % 2}", s"value ${i}")
+    for (i ← 0 to 10) {
+      val data = new ProducerRecord[String, String](topic, "Helloooo", "HELLO,1")
+      val value = producer.send(data)
+      println(value.get().serializedValueSize()) //blocking send
+    }
+  }
+
+  private def produceTestMessagesSync1(topic: String) = {
+
+    val producer = createProducer
+
+    for (i ← 0 to 10) {
+      val data = new ProducerRecord[String, String](topic, "Helloooo", "true")
       val value = producer.send(data)
       println(value.get().serializedValueSize()) //blocking send
     }
